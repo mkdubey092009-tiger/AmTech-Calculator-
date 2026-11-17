@@ -1,0 +1,19 @@
+{
+  "name": "AmTech Calculator",
+  "short_name": "AmTech Calc",
+  "description": "A clean, fast Material Design calculator app with history and dark mode.",
+  "start_url": "/AmTech-Calculator-/",
+  "scope": "/AmTech-Calculator-/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafd",
+  "theme_color": "#0b57d0",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
