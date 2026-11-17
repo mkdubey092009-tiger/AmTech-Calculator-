@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CalcYou — Material Design Calculator</title>
+    <!-- Load Google Fonts: Inter & JetBrains Mono for crisp numbers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        // Material You Dark Palette
+                        m3dark: {
+                            bg: '#111318',
+                            surface: '#1D2026',
+                            surfaceHigh: '#282A30',
+                            primary: '#A8C7FA',
+                            onPrimary: '#062E6F',
+                            secondaryContainer: '#33445E',
+                            onSecondaryContainer: '#D3E3FD',
+                            tertiaryContainer: '#5A3D58',
+                            onTertiaryContainer: '#FFD7F5',
+                            text: '#E2E2E9',
+                            textMuted: '#8E9099',
+                            error: '#FFB4AB'
+                        },
+                        // Material You Light Palette
+                        m3light: {
+                            bg: '#F8F9FF',
+                            surface: '#EFF1F8',
+                            surfaceHigh: '#E3E6EE',
+                            primary: '#0B57D0',
+                            onPrimary: '#FFFFFF',
+                            secondaryContainer: '#D3E3FD',
+                            onSecondaryContainer: '#041E49',
+                            tertiaryContainer: '#FFD7F5',
+                            onTertiaryContainer: '#360F35',
+                            text: '#191C20',
+                            textMuted: '#44474E',
+                            error: '#BA1A1A'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for expression & history */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Material You Haptic Press Animation */
+        .calc-btn {
+            transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1), border-radius 0.15s ease, background-color 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .calc-btn:active, .calc-btn.pressed {
+            transform: scale(0.92);
+            border-radius: 1.25rem !important;
+        }
+
+        /* Smooth drawer slide transition */
+        #history-drawer {
+            transition: transform 0.32s cubic-bezier(0.2, 0, 0, 1);
+        }
+    </style>
+</head>
+<body class="bg-slate-200 dark:bg-[#090A0D] min-h-screen w-full flex items-center justify-center sm:p-4 font-sans antialiased selection:bg-blue-500/30">
+
+    <!-- Android Device Frame Container (Full screen on mobile, centered phone mockup on desktop) -->
+    <main id="app-frame" class="relative w-full h-[100dvh] sm:h-[812px] sm:max-w-[390px] bg-m3light-bg dark:bg-m3dark-bg text-m3light-text dark:text-m3dark-text sm:rounded-[2.75rem] sm:border-[8px] sm:border-slate-800 dark:sm:border-[#242731] sm:shadow-2xl flex flex-col overflow-hidden transition-colors duration-300">
+
+        <!-- Simulated Android Status Bar (Visible on desktop preview for authentic phone feel) -->
+        <div class="hidden sm:flex items-center justify-between px-7 pt-3 pb-1 text-xs font-medium text-m3light-textMuted dark:text-m3dark-textMuted select-none">
+            <span id="status-clock">9:30</span>
+            <!-- Camera Punch Hole -->
+            <div class="w-3.5 h-3.5 rounded-full bg-black/90 border border-slate-700/50"></div>
+            <div class="flex items-center gap-1.5">
+                <!-- Wifi Icon -->
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.95 3 3.15 4.85 0 7.23L12 22 24 7.25C20.85 4.87 17.05 3 12 3z"/></svg>
+                <!-- Battery Icon -->
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+            </div>
+        </div>
+
+        <!-- Top App Bar -->
+        <header class="flex items-center justify-between px-5 pt-3 pb-2 shrink-0 z-10">
+            <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-m3light-primary dark:bg-m3dark-primary"></div>
+                <span class="text-sm font-semibold tracking-wide text-m3light-textMuted dark:text-m3dark-textMuted">Calculator</span>
+            </div>
+
+            <div class="flex items-center gap-1">
+                <!-- History Button -->
+                <button id="btn-history" aria-label="Calculation History" class="p-2.5 rounded-full hover:bg-m3light-surfaceHigh dark:hover:bg-m3dark-surfaceHigh text-m3light-textMuted dark:text-m3dark-textMuted transition-colors relative">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span id="history-badge" class="hidden absolute top-2 right-2 w-2 h-2 rounded-full bg-m3light-primary dark:bg-m3dark-primary"></span>
+                </button>
+
+                <!-- Theme Toggle Button -->
+                <button id="btn-theme" aria-label="Toggle Dark/Light Theme" class="p-2.5 rounded-full hover:bg-m3light-surfaceHigh dark:hover:bg-m3dark-surfaceHigh text-m3light-textMuted dark:text-m3dark-textMuted transition-colors">
+                    <!-- Sun Icon (shown in dark mode) -->
+                    <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <!-- Moon Icon (shown in light mode) -->
+                    <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Display Card Area (Material You Rounded Surface) -->
+        <section class="flex-1 min-h-[160px] mx-3 mb-3 px-5 py-4 rounded-[2rem] bg-m3light-surface dark:bg-m3dark-surface flex flex-col justify-end items-end overflow-hidden transition-colors duration-300 relative">
+            <!-- Subtle copy notification toast inside display -->
+            <div id="copy-toast" class="opacity-0 pointer-events-none transition-opacity duration-200 absolute top-3 left-4 text-xs font-medium px-2.5 py-1 rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer">
+                Copied to clipboard
+            </div>
+
+            <!-- Main Input Expression -->
+            <div id="expression-container" class="w-full overflow-x-auto no-scrollbar text-right mb-2">
+                <div id="expression-display" class="inline-block whitespace-nowrap text-4xl sm:text-[2.6rem] font-normal tracking-tight text-m3light-text dark:text-m3dark-text transition-all duration-150">0</div>
+            </div>
+
+            <!-- Live Preview / Error Output -->
+            <div class="w-full overflow-x-auto no-scrollbar text-right h-9 flex items-center justify-end">
+                <div id="preview-display" title="Tap to copy result" class="cursor-pointer whitespace-nowrap text-2xl font-medium text-m3light-textMuted dark:text-m3dark-textMuted transition-colors"></div>
+            </div>
+        </section>
+
+        <!-- Keypad Grid Area -->
+        <section class="px-3 pb-4 sm:pb-6 pt-1 shrink-0 select-none">
+            <div class="grid grid-cols-4 gap-2.5">
+                <!-- Row 1: AC, (), %, ÷ -->
+                <button data-action="clear" id="btn-clear" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-tertiaryContainer dark:bg-m3dark-tertiaryContainer text-m3light-onTertiaryContainer dark:text-m3dark-onTertiaryContainer text-xl font-semibold flex items-center justify-center shadow-sm">
+                    AC
+                </button>
+                <button data-action="parentheses" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer text-xl font-medium flex items-center justify-center">
+                    ( )
+                </button>
+                <button data-value="%" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer text-xl font-medium flex items-center justify-center">
+                    %
+                </button>
+                <button data-value="÷" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer text-2xl font-medium flex items-center justify-center">
+                    ÷
+                </button>
+
+                <!-- Row 2: 7, 8, 9, × -->
+                <button data-value="7" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    7
+                </button>
+                <button data-value="8" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    8
+                </button>
+                <button data-value="9" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    9
+                </button>
+                <button data-value="×" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer text-2xl font-medium flex items-center justify-center">
+                    ×
+                </button>
+
+                <!-- Row 3: 4, 5, 6, − -->
+                <button data-value="4" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    4
+                </button>
+                <button data-value="5" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    5
+                </button>
+                <button data-value="6" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    6
+                </button>
+                <button data-value="−" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer text-2xl font-medium flex items-center justify-center">
+                    −
+                </button>
+
+                <!-- Row 4: 1, 2, 3, + -->
+                <button data-value="1" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    1
+                </button>
+                <button data-value="2" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    2
+                </button>
+                <button data-value="3" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    3
+                </button>
+                <button data-value="+" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-secondaryContainer dark:bg-m3dark-secondaryContainer text-m3light-onSecondaryContainer dark:text-m3dark-onSecondaryContainer text-2xl font-medium flex items-center justify-center">
+                    +
+                </button>
+
+                <!-- Row 5: 0, ., Backspace, = -->
+                <button data-value="0" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-normal flex items-center justify-center">
+                    0
+                </button>
+                <button data-value="." class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text text-2xl font-semibold flex items-center justify-center">
+                    .
+                </button>
+                <button data-action="backspace" aria-label="Backspace" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh text-m3light-text dark:text-m3dark-text flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+                    </svg>
+                </button>
+                <button data-action="equals" class="calc-btn h-16 sm:h-[68px] rounded-full bg-m3light-primary dark:bg-m3dark-primary text-m3light-onPrimary dark:text-m3dark-onPrimary text-3xl font-medium flex items-center justify-center shadow-md">
+                    =
+                </button>
+            </div>
+        </section>
+
+        <!-- Android Bottom Gesture Pill (Desktop Preview) -->
+        <div class="hidden sm:flex justify-center pb-2">
+            <div class="w-28 h-1 rounded-full bg-m3light-textMuted/30 dark:bg-m3dark-textMuted/30"></div>
+        </div>
+
+        <!-- Slide-Up Calculation History Drawer -->
+        <div id="history-backdrop" class="hidden absolute inset-0 bg-black/50 backdrop-blur-[1px] z-20 transition-opacity"></div>
+        <aside id="history-drawer" class="translate-y-full absolute inset-x-0 bottom-0 h-[78%] bg-m3light-surface dark:bg-m3dark-surface rounded-t-[2rem] shadow-2xl z-30 flex flex-col border-t border-black/5 dark:border-white/5">
+            <!-- Drag Handle & Drawer Header -->
+            <div class="pt-3 pb-2 px-6 flex flex-col items-center border-b border-black/5 dark:border-white/5 shrink-0">
+                <div class="w-9 h-1 rounded-full bg-m3light-textMuted/30 dark:bg-m3dark-textMuted/30 mb-3"></div>
+                <div class="w-full flex items-center justify-between">
+                    <h2 class="text-base font-semibold tracking-tight">History</h2>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-clear-history" class="text-xs font-medium px-3 py-1.5 rounded-full bg-m3light-surfaceHigh dark:bg-m3dark-surfaceHigh hover:opacity-80 text-m3light-error dark:text-m3dark-error transition-opacity">
+                            Clear all
+                        </button>
+                        <button id="btn-close-history" aria-label="Close History" class="p-1.5 rounded-full hover:bg-m3light-surfaceHigh dark:hover:bg-m3dark-surfaceHigh text-m3light-textMuted dark:text-m3dark-textMuted">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Items List -->
+            <div id="history-list" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </aside>
+
+    </main>
+
+    <script>
+        /**
+         * CalcYou — Material You Calculator Logic
+         * Handles expression parsing, live evaluation, parenthesis balancing,
+         * decimal validation, division-by-zero checks, and persistent history.
+         */
+        (() => {
+            // --- State Management ---
+            let expression = '';
+            let justEvaluated = false;
+            const STORAGE_KEY_HISTORY = 'calcyou_history_v1';
+            const STORAGE_KEY_THEME = 'calcyou_theme_v1';
+
+            let history = [];
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY_HISTORY);
+                if (saved) history = JSON.parse(saved);
+            } catch (e) {
+                console.warn('Could not load history from localStorage', e);
+            }
+
+            // --- DOM Elements ---
+            const exprDisplay = document.getElementById('expression-display');
+            const exprContainer = document.getElementById('expression-container');
+            const previewDisplay = document.getElementById('preview-display');
+            const btnClear = document.getElementById('btn-clear');
+            const btnTheme = document.getElementById('btn-theme');
+            const btnHistory = document.getElementById('btn-history');
+            const historyBadge = document.getElementById('history-badge');
+            const historyDrawer = document.getElementById('history-drawer');
+            const historyBackdrop = document.getElementById('history-backdrop');
+            const historyList = document.getElementById('history-list');
+            const btnCloseHistory = document.getElementById('btn-close-history');
+            const btnClearHistory = document.getElementById('btn-clear-history');
+            const copyToast = document.getElementById('copy-toast');
+            const statusClock = document.getElementById('status-clock');
+
+            // --- Theme Initialization ---
+            function initTheme() {
+                const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+                if (savedTheme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                } else {
+                    document.documentElement.classList.add('dark');
+                }
+            }
+
+            btnTheme.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem(STORAGE_KEY_THEME, isDark ? 'dark' : 'light');
+                triggerHaptic();
+            });
+
+            // --- Subtle Haptic Feedback (Mobile Web Vibration API) ---
+            function triggerHaptic(ms = 12) {
+                if (navigator.vibrate) {
+                    try { navigator.vibrate(ms); } catch (_) {}
+                }
+            }
+
+            // --- Live Status Bar Clock ---
+            function updateClock() {
+                if (!statusClock) return;
+                const now = new Date();
+                const hours = now.getHours();
+                const mins = String(now.getMinutes()).padStart(2, '0');
+                statusClock.textContent = `${hours}:${mins}`;
+            }
+            updateClock();
+            setInterval(updateClock, 15000);
+
+            // --- Safe Math Evaluation Engine ---
+            function evaluateExpression(rawExpr) {
+                if (!rawExpr || rawExpr.trim() === '') return null;
+
+                // Clean trailing operators or open parentheses for live preview
+                let sanitized = rawExpr.trim();
+                while (/[+\-−×÷.]$/.test(sanitized)) {
+                    sanitized = sanitized.slice(0, -1);
+                }
+                if (!sanitized) return null;
+
+                // Auto-close unclosed parentheses for live preview calculation
+                const openCount = (sanitized.match(/\(/g) || []).length;
+                const closeCount = (sanitized.match(/\)/g) || []).length;
+                if (openCount > closeCount) {
+                    sanitized += ')'.repeat(openCount - closeCount);
+                }
+
+                // Replace visual symbols with standard JS arithmetic operators
+                // Handle implicit multiplication: e.g., 5(2) -> 5*(2), (2)(3) -> (2)*(3), )5 -> )*5, %5 -> %*5
+                let jsExpr = sanitized
+                    .replace(/×/g, '*')
+                    .replace(/÷/g, '/')
+                    .replace(/−/g, '-')
+                    .replace(/(\d|\))(\()/g, '$1*$2')
+                    .replace(/(\))(\d)/g, '$1*$2')
+                    .replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+
+                // Strict whitelist validation before evaluation
+                if (!/^[0-9+\-*/().\s]+$/.test(jsExpr)) {
+                    return { error: 'Format error' };
+                }
+
+                try {
+                    // Evaluate safely using Function constructor
+                    const result = new Function(`"use strict"; return (${jsExpr});`)();
+
+                    if (typeof result !== 'number' || Number.isNaN(result)) {
+                        return { error: 'Invalid expression' };
+                    }
+                    if (!Number.isFinite(result)) {
+                        return { error: "Can't divide by 0" };
+                    }
+
+                    // Fix floating-point precision quirks (e.g., 0.1 + 0.2 = 0.30000000000000004)
+                    const rounded = Math.round(result * 1e10) / 1e10;
+                    return { value: rounded };
+                } catch (err) {
+                    return null;
+                }
+            }
+
+            // Format number with commas while keeping decimals intact
+            function formatNumberString(num) {
+                const str = String(num);
+                if (str.includes('e')) return str; // Scientific notation for huge/tiny numbers
+                const parts = str.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return parts.join('.');
+            }
+
+            // Format expression string for display (adds commas to numbers inside expression)
+            function formatExpressionForDisplay(expr) {
+                if (!expr) return '0';
+                return expr.replace(/\d+(\.\d+)?/g, (match) => {
+                    const parts = match.split('.');
+                    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    return parts.join('.');
+                });
+            }
+
+            // --- UI Display Update ---
+            function updateDisplay() {
+                // Toggle AC vs C button label
+                btnClear.textContent = expression.length > 0 ? 'C' : 'AC';
+
+                // Render main expression
+                exprDisplay.textContent = formatExpressionForDisplay(expression);
+
+                // Dynamically adjust font size based on length
+                const len = expression.length;
+                if (len > 16) {
+                    exprDisplay.className = 'inline-block whitespace-nowrap text-2xl sm:text-[1.75rem] font-normal tracking-tight text-m3light-text dark:text-m3dark-text transition-all duration-150';
+                } else if (len > 11) {
+                    exprDisplay.className = 'inline-block whitespace-nowrap text-3xl sm:text-[2.1rem] font-normal tracking-tight text-m3light-text dark:text-m3dark-text transition-all duration-150';
+                } else {
+                    exprDisplay.className = 'inline-block whitespace-nowrap text-4xl sm:text-[2.6rem] font-normal tracking-tight text-m3light-text dark:text-m3dark-text transition-all duration-150';
+                }
+
+                // Auto-scroll display to the right end
+                exprContainer.scrollLeft = exprContainer.scrollWidth;
+
+                // Evaluate live preview
+                const evalResult = evaluateExpression(expression);
+                previewDisplay.classList.remove('text-m3light-error', 'dark:text-m3dark-error');
+
+                // Only show preview if expression actually contains an operator or parenthesis or %
+                const hasOperation = /[+\-−×÷%()]/.test(expression);
+
+                if (!expression || !hasOperation) {
+                    previewDisplay.textContent = '';
+                } else if (evalResult && evalResult.error) {
+                    // Only show divide by zero error immediately if user typed ÷0, else wait for '='
+                    if (evalResult.error === "Can't divide by 0" && /÷0(?![.\d])/.test(expression)) {
+                        previewDisplay.textContent = evalResult.error;
+                        previewDisplay.classList.add('text-m3light-error', 'dark:text-m3dark-error');
+                    } else {
+                        previewDisplay.textContent = '';
+                    }
+                } else if (evalResult && evalResult.value !== undefined) {
+                    previewDisplay.textContent = formatNumberString(evalResult.value);
+                } else {
+                    previewDisplay.textContent = '';
+                }
+            }
+
+            // --- Input Handlers ---
+            function appendValue(val) {
+                const operators = ['+', '−', '×', '÷'];
+                const lastChar = expression.slice(-1);
+
+                // If user just pressed '=', start fresh on digit/decimal, or continue on operator
+                if (justEvaluated) {
+                    if (!operators.includes(val) && val !== '%') {
+                        expression = '';
+                    }
+                    justEvaluated = false;
+                }
+
+                // Handle Decimal Validation (prevent multiple decimals in the same number token)
+                if (val === '.') {
+                    const tokens = expression.split(/[+\-−×÷()%]/);
+                    const currentNumber = tokens[tokens.length - 1];
+                    if (currentNumber.includes('.')) return; // Already has decimal
+                    if (currentNumber === '') {
+                        expression += '0.';
+                        updateDisplay();
+                        return;
+                    }
+                }
+
+                // Handle Operators (+, −, ×, ÷)
+                if (operators.includes(val)) {
+                    if (expression === '') {
+                        // Allow leading minus for negative numbers
+                        if (val === '−') {
+                            expression = '−';
+                            updateDisplay();
+                        }
+                        return;
+                    }
+                    if (lastChar === '(' && val !== '−') return;
+                    if (lastChar === '−' && expression.length === 1) return;
+
+                    // Replace consecutive operator
+                    if (operators.includes(lastChar)) {
+                        expression = expression.slice(0, -1) + val;
+                        updateDisplay();
+                        return;
+                    }
+                }
+
+                // Handle Percentage
+                if (val === '%') {
+                    if (expression === '' || operators.includes(lastChar) || lastChar === '(' || lastChar === '%') {
+                        return;
+                    }
+                }
+
+                // Prevent leading zeros like 007
+                if (val === '0') {
+                    const tokens = expression.split(/[+\-−×÷()%]/);
+                    const currentNumber = tokens[tokens.length - 1];
+                    if (currentNumber === '0') return;
+                }
+
+                expression += val;
+                updateDisplay();
+            }
+
+            function handleParentheses() {
+                if (justEvaluated) {
+                    expression = '';
+                    justEvaluated = false;
+                }
+
+                const openCount = (expression.match(/\(/g) || []).length;
+                const closeCount = (expression.match(/\)/g) || []).length;
+                const lastChar = expression.slice(-1);
+
+                // Insert ')' if there's an unclosed '(' and the last char is a digit, ')', or '%'
+                if (openCount > closeCount && /[\d)%]/.test(lastChar)) {
+                    expression += ')';
+                } else {
+                    expression += '(';
+                }
+                updateDisplay();
+            }
+
+            function handleBackspace() {
+                if (justEvaluated) justEvaluated = false;
+                if (expression.length > 0) {
+                    expression = expression.slice(0, -1);
+                    updateDisplay();
+                }
+            }
+
+            function handleClear() {
+                expression = '';
+                justEvaluated = false;
+                updateDisplay();
+            }
+
+            function handleEquals() {
+                if (!expression) return;
+                const evalResult = evaluateExpression(expression);
+
+                if (!evalResult) return;
+
+                if (evalResult.error) {
+                    previewDisplay.textContent = evalResult.error;
+                    previewDisplay.classList.add('text-m3light-error', 'dark:text-m3dark-error');
+                    triggerHaptic(35);
+                    return;
+                }
+
+                const formattedResult = String(evalResult.value);
+                // Save to history if expression had an operation
+                if (/[+\-−×÷%()]/.test(expression)) {
+                    addHistoryItem(expression, formattedResult);
+                }
+
+                expression = formattedResult;
+                justEvaluated = true;
+                updateDisplay();
+            }
+
+            // --- History Management ---
+            function saveHistory() {
+                try {
+                    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
+                } catch (e) {
+                    console.warn('Could not save history', e);
+                }
+                renderHistory();
+            }
+
+            function addHistoryItem(expr, res) {
+                // Avoid duplicate consecutive entries
+                if (history.length > 0 && history[0].expr === expr && history[0].res === res) return;
+                history.unshift({ expr, res, timestamp: Date.now() });
+                if (history.length > 50) history.pop(); // Cap at 50 items
+                saveHistory();
+            }
+
+            function renderHistory() {
+                if (history.length > 0) {
+                    historyBadge.classList.remove('hidden');
+                } else {
+                    historyBadge.classList.add('hidden');
+                }
+
+                if (history.length === 0) {
+                    historyList.innerHTML = `
+                        <div class="h-full flex flex-col items-center justify-center text-center text-m3light-textMuted dark:text-m3dark-textMuted py-12">
+                            <svg class="w-12 h-12 mb-3 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm font-medium">No history yet</p>
+                            <p class="text-xs opacity-75 mt-1">Completed calculations will appear here</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                historyList.innerHTML = history.map((item, idx) => `
+                    <div data-history-idx="${idx}" class="history-item cursor-pointer p-3.5 rounded-2xl bg-m3light-bg dark:bg-m3dark-bg hover:bg-m3light-surfaceHigh dark:hover:bg-m3dark-surfaceHigh transition-colors text-right">
+                        <div class="text-sm text-m3light-textMuted dark:text-m3dark-textMuted break-all mb-1">${formatExpressionForDisplay(item.expr)}</div>
+                        <div class="text-xl font-semibold text-m3light-primary dark:text-m3dark-primary">= ${formatNumberString(item.res)}</div>
+                    </div>
+                `).join('');
+
+                // Attach tap-to-reuse listeners
+                document.querySelectorAll('.history-item').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const idx = Number(el.getAttribute('data-history-idx'));
+                        if (history[idx]) {
+                            expression = history[idx].res;
+                            justEvaluated = false;
+                            updateDisplay();
+                            closeHistoryDrawer();
+                            triggerHaptic();
+                        }
+                    });
+                });
+            }
+
+            function openHistoryDrawer() {
+                historyBackdrop.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    historyDrawer.classList.remove('translate-y-full');
+                });
+            }
+
+            function closeHistoryDrawer() {
+                historyDrawer.classList.add('translate-y-full');
+                setTimeout(() => {
+                    historyBackdrop.classList.add('hidden');
+                }, 300);
+            }
+
+            btnHistory.addEventListener('click', () => {
+                triggerHaptic();
+                openHistoryDrawer();
+            });
+            btnCloseHistory.addEventListener('click', closeHistoryDrawer);
+            historyBackdrop.addEventListener('click', closeHistoryDrawer);
+
+            btnClearHistory.addEventListener('click', () => {
+                history = [];
+                saveHistory();
+                triggerHaptic();
+            });
+
+            // --- Tap Preview Result to Copy ---
+            previewDisplay.addEventListener('click', () => {
+                const text = previewDisplay.textContent.replace(/,/g, '');
+                if (!text || text.includes('Can\'t') || text.includes('error')) return;
+
+                // Use reliable execCommand fallback inside iframes
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                try {
+                    document.execCommand('copy');
+                    copyToast.classList.remove('opacity-0');
+                    setTimeout(() => copyToast.classList.add('opacity-0'), 1600);
+                    triggerHaptic();
+                } catch (_) {}
+                document.body.removeChild(tempInput);
+            });
+
+            // --- Button Click Binding ---
+            document.querySelectorAll('.calc-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    triggerHaptic();
+                    const val = btn.getAttribute('data-value');
+                    const action = btn.getAttribute('data-action');
+
+                    if (val !== null) {
+                        appendValue(val);
+                    } else if (action === 'clear') {
+                        handleClear();
+                    } else if (action === 'backspace') {
+                        handleBackspace();
+                    } else if (action === 'parentheses') {
+                        handleParentheses();
+                    } else if (action === 'equals') {
+                        handleEquals();
+                    }
+                });
+            });
+
+            // --- Physical Keyboard Support ---
+            document.addEventListener('keydown', (e) => {
+                const key = e.key;
+                let targetSelector = null;
+
+                if (/^[0-9]$/.test(key)) {
+                    appendValue(key);
+                    targetSelector = `[data-value="${key}"]`;
+                } else if (key === '.') {
+                    appendValue('.');
+                    targetSelector = `[data-value="."]`;
+                } else if (key === '+') {
+                    appendValue('+');
+                    targetSelector = `[data-value="+"]`;
+                } else if (key === '-') {
+                    appendValue('−');
+                    targetSelector = `[data-value="−"]`;
+                } else if (key === '*') {
+                    appendValue('×');
+                    targetSelector = `[data-value="×"]`;
+                } else if (key === '/') {
+                    e.preventDefault();
+                    appendValue('÷');
+                    targetSelector = `[data-value="÷"]`;
+                } else if (key === '%') {
+                    appendValue('%');
+                    targetSelector = `[data-value="%"]`;
+                } else if (key === '(' || key === ')') {
+                    handleParentheses();
+                    targetSelector = `[data-action="parentheses"]`;
+                } else if (key === 'Enter' || key === '=') {
+                    e.preventDefault();
+                    handleEquals();
+                    targetSelector = `[data-action="equals"]`;
+                } else if (key === 'Backspace') {
+                    handleBackspace();
+                    targetSelector = `[data-action="backspace"]`;
+                } else if (key === 'Escape' || key === 'Delete') {
+                    handleClear();
+                    targetSelector = `[data-action="clear"]`;
+                }
+
+                // Trigger visual button press animation on keyboard hit
+                if (targetSelector) {
+                    const btnEl = document.querySelector(targetSelector);
+                    if (btnEl) {
+                        btnEl.classList.add('pressed');
+                        setTimeout(() => btnEl.classList.remove('pressed'), 120);
+                    }
+                }
+            });
+
+            // --- Initialize App ---
+            initTheme();
+            renderHistory();
+            updateDisplay();
+        })();
+    </script>
+</body>
+  </html>
